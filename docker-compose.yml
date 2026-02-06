@@ -1,0 +1,118 @@
+version: "3.8"
+
+services:
+  # Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: quantpulse
+      POSTGRES_PASSWORD: quantpulse
+      POSTGRES_DB: quantpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantpulse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache & Events
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Services
+  symbol-management:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://quantpulse:quantpulse@postgres:5432/quantpulse
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m services.symbol_management.main
+
+  market-data:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://quantpulse:quantpulse@postgres:5432/quantpulse
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m services.market_data.main
+
+  data-analyzer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://quantpulse:quantpulse@postgres:5432/quantpulse
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m services.data_analyzer.main
+
+  notifier:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://quantpulse:quantpulse@postgres:5432/quantpulse
+      REDIS_URL: redis://redis:6379/0
+      SLACK_ENABLED: "false"
+      LOG_LEVEL: INFO
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m services.notifier.main
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8001
+    depends_on:
+      - symbol-management
+
+volumes:
+  postgres_data:
+  redis_data:

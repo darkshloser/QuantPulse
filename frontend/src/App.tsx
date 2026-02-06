@@ -2,7 +2,7 @@
  * Main application component.
  */
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { SymbolList } from "./components/SymbolList"
 import { SignalPanel } from "./components/SignalPanel"
 import { symbolAPI } from "./api/client"

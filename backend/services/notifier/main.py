@@ -9,8 +9,11 @@ from shared.database import get_db, engine, Base
 from shared.models import SignalResult
 from shared.logging_config import logger as app_logger
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables (safe to call multiple times)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    app_logger.warning(f"Error creating tables (may already exist): {e}")
 
 app = FastAPI(
     title="Notifier Service",

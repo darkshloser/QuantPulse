@@ -11,8 +11,11 @@ from shared.models import Symbol, SelectedSymbol, MarketData, MarketDataSchema
 from shared.events import event_bus, Event, EventType
 from shared.logging_config import logger as app_logger
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables (safe to call multiple times)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    app_logger.warning(f"Error creating tables (may already exist): {e}")
 
 app = FastAPI(
     title="Market Data Retriever Service",

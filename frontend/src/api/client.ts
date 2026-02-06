@@ -5,7 +5,7 @@
 import axios from "axios"
 import { Symbol, Signal } from "../types"
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001"
+const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:8001"
 
 const client = axios.create({
   baseURL: API_BASE,

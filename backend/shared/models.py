@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
-from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum
+from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, Float, Integer
 from sqlalchemy.sql import func
 
 from shared.database import Base
@@ -49,11 +49,11 @@ class MarketData(Base):
     id = Column(String, primary_key=True, index=True)  # symbol:date composite
     symbol = Column(String(50), index=True)
     date = Column(DateTime, index=True)
-    open_price = Column(float)
-    high = Column(float)
-    low = Column(float)
-    close = Column(float)
-    volume = Column(float)
+    open_price = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(Float)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -66,7 +66,7 @@ class SignalResult(Base):
     symbol = Column(String(50), index=True)
     signal_type = Column(String(50))  # e.g., "RSI_OVERSOLD", "ATR_EXPANSION"
     timestamp = Column(DateTime, server_default=func.now())
-    confidence = Column(float)  # 0.0 to 1.0
+    confidence = Column(Float)  # 0.0 to 1.0
     explanation = Column(String(1000))
     indicators_passed = Column(String(500))  # JSON string
     notified = Column(Boolean, default=False)

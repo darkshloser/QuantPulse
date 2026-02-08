@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # Scheduler
     analyzer_schedule_time: str = "02:00"
 
+    # NASDAQ Symbol Directory
+    nasdaq_url: str = "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
+    nasdaq_timeout: int = 30
+    nasdaq_retries: int = 3
+
     # Environment
     debug: bool = False
     log_level: str = "INFO"

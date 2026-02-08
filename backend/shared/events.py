@@ -12,6 +12,7 @@ from shared.config import settings
 class EventType(str, Enum):
     """Event types in the system."""
     SYMBOLS_SELECTED = "symbols_selected"
+    SYMBOLS_IMPORTED = "symbols_imported"
     MARKET_DATA_UPDATED = "market_data_updated"
     SIGNAL_TRIGGERED = "signal_triggered"
     ANALYSIS_STARTED = "analysis_started"

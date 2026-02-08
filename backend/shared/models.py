@@ -26,10 +26,13 @@ class Symbol(Base):
 
     symbol = Column(String(50), primary_key=True, index=True)
     yahoo_symbol = Column(String(50), unique=True, index=True)
+    company_name = Column(String(255))
     instrument_type = Column(SQLEnum(InstrumentType), nullable=False)
-    exchange = Column(String(10))
+    exchange = Column(String(10), index=True)
     currency = Column(String(3))
-    is_active = Column(Boolean, default=True)
+    market_category = Column(String(50))
+    financial_status = Column(String(50))
+    is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -81,9 +84,12 @@ class SymbolSchema(BaseModel):
     """Symbol API schema."""
     symbol: str
     yahoo_symbol: str
+    company_name: Optional[str] = None
     instrument_type: InstrumentType
-    exchange: Optional[str]
-    currency: Optional[str]
+    exchange: Optional[str] = None
+    currency: Optional[str] = None
+    market_category: Optional[str] = None
+    financial_status: Optional[str] = None
     is_active: bool = True
 
     class Config:
@@ -127,3 +133,19 @@ class SignalSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class NasdaqImportRequest(BaseModel):
+    """Request body for NASDAQ symbol import endpoint."""
+    source: str = "NASDAQ_OFFICIAL"
+    instrumentType: str = "STOCK"
+
+
+class ImportSummaryResponse(BaseModel):
+    """Response body for symbol import endpoint."""
+    exchange: str
+    processed: int
+    inserted: int
+    updated: int
+    skipped: int
+    timestamp: datetime

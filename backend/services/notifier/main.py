@@ -2,6 +2,7 @@
 
 import logging
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from shared.config import settings
@@ -19,6 +20,15 @@ app = FastAPI(
     title="Notifier Service",
     version="1.0.0",
     description="Delivers alerts via Slack and GUI",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

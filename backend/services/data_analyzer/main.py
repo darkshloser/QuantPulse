@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from shared.config import settings
@@ -21,6 +22,15 @@ app = FastAPI(
     title="Data Analyzer Service",
     version="1.0.0",
     description="Applies indicators and evaluates signals",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

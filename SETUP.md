@@ -1,49 +1,29 @@
 # QuantPulse - Setup & Getting Started
 
-## What's Been Created
+## What's Been Implemented
 
-This is a **barebone v1.0 structure** of the QuantPulse market intelligence platform. All core components and infrastructure are in place, with TODO comments in the code indicating where implementation is needed.
+QuantPulse now includes **complete authentication and authorization** with user management, role-based access control, and admin functionality. See [AUTHENTICATION.md](./AUTHENTICATION.md) for detailed information.
 
-### Structure Overview
+### Key Features Added
+- ✅ User authentication (username/email + password)
+- ✅ Secure password hashing (bcrypt)
+- ✅ JWT token-based authorization
+- ✅ Role-based access control (ADMIN, USER)
+- ✅ User registration and approval workflow
+- ✅ Admin profile and settings pages
+- ✅ User management dashboard
+- ✅ Symbol import restrictions (admin-only)
+- ✅ Landing page for unauthenticated users
 
-```
-QuantPulse/
-├── backend/                    Python microservices backend
-│   ├── services/               Four microservices
-│   ├── shared/                 Common utilities and models
-│   ├── requirements.txt        Python dependencies
-│   └── Dockerfile              Service container image
-├── frontend/                   React + TypeScript UI
-│   ├── src/                    Application source
-│   └── package.json            Node dependencies
-├── docker-compose.yml          Local development orchestration
-├── ARCHITECTURE.md             Detailed design documentation
-├── README.md                   User-facing documentation
-└── SETUP.md                    This file
-```
+### New Services
+- **Authentication Service** (Port 8000) - Handles login, registration, user management
+
+### Updated Services
+- **Symbol Management** - Protected endpoints for NASDAQ/symbol imports
 
 ## Quick Start
 
-### 1. Start Services with Docker Compose
-
-```bash
-cd /home/darkshloser/PublicRepos/QuantPulse
-
-# Build and start all services
-docker-compose up -d
-
-# Check services are healthy
-docker-compose ps
-```
-
-Services will be available at:
-- **Frontend:** http://localhost:3000
-- **Symbol Management (SMS):** http://localhost:8001
-- **Market Data Retriever (MDR):** http://localhost:8002
-- **Data Analyzer (DAS):** http://localhost:8003
-- **Notifier:** http://localhost:8004
-
-### 2. Local Development Setup
+### 1. Local Development Setup
 
 #### Backend
 
@@ -54,17 +34,28 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (now includes JWT, passlib, bcrypt)
 pip install -r requirements.txt
 
 # Copy environment file
 cp .env.example .env
 
-# Start a service (in separate terminals)
-python -m services.symbol_management.main  # Port 8001
-python -m services.market_data.main         # Port 8002
-python -m services.data_analyzer.main       # Port 8003
-python -m services.notifier.main            # Port 8004
+# Edit .env to set JWT_SECRET_KEY
+# IMPORTANT: Generate a secure random key in production
+
+# Start services (in separate terminals)
+
+# Terminal 1: Authentication Service (NEW)
+cd services/auth
+uvicorn main:app --reload --port 8000
+
+# Terminal 2: Symbol Management Service
+cd services/symbol_management
+uvicorn main:app --reload --port 8001
+
+# Terminal 3+: Other services (optional)
+cd services/market_data
+uvicorn main:app --reload --port 8002
 ```
 
 #### Frontend
@@ -72,20 +63,98 @@ python -m services.notifier.main            # Port 8004
 ```bash
 cd frontend
 
-# Install dependencies
+# Install dependencies (now includes react-router-dom)
 npm install
 
+# Create .env.local file
+cat > .env.local << EOF
+VITE_AUTH_API_URL=http://localhost:8000
+VITE_SYMBOL_API_URL=http://localhost:8001
+EOF
+
 # Start dev server
-npm run dev  # Runs on http://localhost:3000
+npm run dev  # Runs on http://localhost:5173
 ```
 
+### 2. Access the Application
+
+1. **Landing Page** → http://localhost:5173/
+2. **Login** → http://localhost:5173/login
+3. **Register** → http://localhost:5173/register
+
+### 3. Admin User (Pre-created)
+
+Auto-created on first auth service startup:
+- **Username:** `darkshloser`
+- **Password:** `QT123456!_qt`
+- **Access Level:** Full admin privileges
+
+### 4. Start Services with Docker Compose (Optional)
+
+```bash
+cd /home/darkshloser/GitHub/Public/QuantPulse
+
+# Build and start all services
+docker-compose up -d
+
+# Check services are healthy
+docker-compose ps
+```
+
+Services will be available at:
+- **Frontend:** http://localhost:3000 (or 5173 for Vite dev)
+- **Authentication Service:** http://localhost:8000
+- **Symbol Management (SMS):** http://localhost:8001
+- **Market Data Retriever (MDR):** http://localhost:8002
+- **Data Analyzer (DAS):** http://localhost:8003
+- **Notifier:** http://localhost:8004
+
 ## Key Files to Review
+
+### Authentication & Authorization (NEW)
+
+1. **Authentication Service** → [backend/services/auth/main.py](./backend/services/auth/main.py)
+   - User registration and login
+   - JWT token generation and validation
+   - Admin user management endpoints
+   - User approval workflow
+
+2. **Auth Utilities** → [backend/shared/auth.py](./backend/shared/auth.py)
+   - Password hashing with bcrypt
+   - JWT token creation/validation
+   - FastAPI dependency injection for auth
+
+3. **Updated Models** → [backend/shared/models.py](./backend/shared/models.py)
+   - User model with role and approval status
+   - UserRole and ApprovalStatus enums
+   - Enhanced Pydantic schemas
+
+4. **Frontend Auth Components** → [frontend/src/components/](./frontend/src/components/)
+   - `Login.tsx` - User login page
+   - `Register.tsx` - User registration page
+   - `Landing.tsx` - Public landing page
+   - `Profile.tsx` - Admin profile page
+   - `Settings.tsx` - Admin settings and user management
+
+5. **Auth Context** → [frontend/src/context/AuthContext.tsx](./frontend/src/context/AuthContext.tsx)
+   - React Context for auth state management
+   - useAuth hook for accessing auth info
+
+6. **Route Protection** → [frontend/src/components/ProtectedRoute.tsx](./frontend/src/components/ProtectedRoute.tsx)
+   - ProtectedRoute component (authentication required)
+   - AdminRoute component (admin role required)
+   - UnAuthenticatedRoute component (logged-out only)
+
+7. **API Client** → [frontend/src/api/client.ts](./frontend/src/api/client.ts)
+   - Enhanced with authentication endpoints
+   - Automatic JWT token injection
+   - Error handling for token expiration
 
 ### Backend Services
 
 1. **Symbol Management** → [backend/services/symbol_management/main.py](./backend/services/symbol_management/main.py)
-   - TODO: Complete CRUD operations
-   - TODO: Add validation
+   - Updated import endpoints (admin-only)
+   - Get symbols endpoint (public to authenticated users)
 
 2. **Market Data Retriever** → [backend/services/market_data/main.py](./backend/services/market_data/main.py)
    - TODO: Implement Yahoo Finance provider
@@ -104,17 +173,52 @@ npm run dev  # Runs on http://localhost:3000
 
 ### Shared Code
 
-- [backend/shared/models.py](./backend/shared/models.py) - Database models and API schemas
+- [backend/shared/models.py](./backend/shared/models.py) - Database models and API schemas (now includes User model)
+- [backend/shared/auth.py](./backend/shared/auth.py) - **NEW** Authentication utilities
 - [backend/shared/events.py](./backend/shared/events.py) - Event bus implementation
 - [backend/shared/config.py](./backend/shared/config.py) - Configuration management
 - [backend/shared/logging_config.py](./backend/shared/logging_config.py) - Structured logging
 
 ### Frontend
 
-- [frontend/src/App.tsx](./frontend/src/App.tsx) - Main application component
+- [frontend/src/App.tsx](./frontend/src/App.tsx) - Main application component with routing
+- [frontend/src/context/AuthContext.tsx](./frontend/src/context/AuthContext.tsx) - **NEW** Authentication state
+- [frontend/src/components/ProtectedRoute.tsx](./frontend/src/components/ProtectedRoute.tsx) - **NEW** Route guards
+- [frontend/src/components/Login.tsx](./frontend/src/components/Login.tsx) - **NEW** Login page
+- [frontend/src/components/Register.tsx](./frontend/src/components/Register.tsx) - **NEW** Registration page
+- [frontend/src/components/Landing.tsx](./frontend/src/components/Landing.tsx) - **NEW** Public landing
+- [frontend/src/components/Profile.tsx](./frontend/src/components/Profile.tsx) - **NEW** Admin profile
+- [frontend/src/components/Settings.tsx](./frontend/src/components/Settings.tsx) - **NEW** Admin settings
 - [frontend/src/components/SymbolList.tsx](./frontend/src/components/SymbolList.tsx) - Left panel
 - [frontend/src/components/SignalPanel.tsx](./frontend/src/components/SignalPanel.tsx) - Main panel
-- [frontend/src/api/client.ts](./frontend/src/api/client.ts) - API integration
+- [frontend/src/api/client.ts](./frontend/src/api/client.ts) - API integration (now with auth)
+
+## Authentication Features
+
+For complete authentication documentation, see [AUTHENTICATION.md](./AUTHENTICATION.md)
+
+### User Roles & Permissions
+
+| Feature | ADMIN | USER | UNAUTHENTICATED |
+|---------|:-----:|:----:|:-------:|
+| Landing Page | ❌ | ❌ | ✅ |
+| Login/Register | ✅ | ✅ | ❌ |
+| Profile Page | ✅ | ❌ | ❌ |
+| Settings Page | ✅ | ❌ | ❌ |
+| User Management | ✅ | ❌ | ❌ |
+| Symbol Import | ✅ | ❌ | ❌ |
+| View Symbols | ✅ | ✅ | ❌ |
+| Select Symbols | ✅ | ✅ | ❌ |
+
+### Default Admin Account
+
+```
+Username: darkshloser
+Password: QT123456!_qt
+Email: admin@quantpulse.local (auto-generated)
+```
+
+Auto-created on first auth service startup.
 
 ## Design Principles to Follow
 
@@ -123,6 +227,7 @@ npm run dev  # Runs on http://localhost:3000
 3. **Idempotent operations** - Safe to retry
 4. **Loose coupling** - Event-driven communication
 5. **Explainable signals** - Every alert includes "why"
+6. **Secure authentication** - JWT tokens + bcrypt passwords
 
 ## Next Steps for Implementation
 
@@ -144,7 +249,72 @@ npm run dev  # Runs on http://localhost:3000
 
 ## Testing the System
 
-### Manual Testing
+### Authentication Testing
+
+1. **Admin Login**
+   - Go to http://localhost:5173/login
+   - Username: `darkshloser`
+   - Password: `QT123456!_qt`
+   - Should redirect to `/admin/dashboard`
+
+2. **New User Registration**
+   - Go to http://localhost:5173/register
+   - Fill in username, email, password
+   - Account created in PENDING status
+   - Cannot login until approved by admin
+
+3. **Admin Approval**
+   - Login as admin
+   - Go to `/admin/settings`
+   - Click "Pending Approvals" tab
+   - Review and approve/reject new users
+   - Approved users can now login
+
+4. **Symbol Management (Admin)**
+   - Login as admin
+   - Go to `/admin/settings` → "Symbol Management"
+   - Click "Import NASDAQ Symbols"
+   - Symbols are imported (admin-only endpoint)
+
+### Manual API Testing
+
+```bash
+# Register new user
+curl -X POST http://localhost:8000/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "password123"
+  }'
+
+# Login
+curl -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username_or_email": "darkshloser",
+    "password": "QT123456!_qt"
+  }'
+
+# Get current user (requires token)
+curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  http://localhost:8000/me
+
+# List all users (admin only)
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  http://localhost:8000/admin/users
+
+# Import NASDAQ symbols (admin only)
+curl -X POST http://localhost:8001/symbols/import/nasdaq \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "NASDAQ_OFFICIAL",
+    "instrumentType": "STOCK"
+  }'
+```
+
+### Original Manual Testing
 
 ```bash
 # Import symbols
@@ -217,16 +387,44 @@ SELECT * FROM symbols;
 SELECT * FROM selected_symbols;
 ```
 
-## Known Limitations (Barebone)
+## Known Limitations (v1.0)
 
+- [ ] Email verification on registration
+- [ ] Password reset functionality
+- [ ] Two-factor authentication
+- [ ] Profile picture upload
+- [ ] OAuth integration (GitHub, Google)
+- [ ] Audit logging for admin actions
+- [ ] Rate limiting on auth endpoints
 - [ ] No actual market data fetching (stub only)
 - [ ] No indicator calculations
 - [ ] No Slack integration
-- [ ] No authentication
-- [ ] No multi-user support
+- [ ] No multi-user workspace support
 - [ ] No WebSocket real-time updates
-- [ ] Limited error handling
-- [ ] No database migrations (using SQLAlchemy create_all)
+- [ ] Limited error handling in data services
+
+## What's Been Implemented
+
+### Authentication & Authorization ✅
+- [x] User registration
+- [x] User login (username or email)
+- [x] Secure password hashing (bcrypt)
+- [x] JWT token-based authorization
+- [x] Role-based access control (ADMIN, USER)
+- [x] User approval workflow
+- [x] Admin profile page
+- [x] Admin settings page with user management
+- [x] Symbol import restrictions (admin-only)
+- [x] Landing page for unauthenticated users
+- [x] Route protection and guards
+
+### Remaining Features (TODO)
+- [ ] Market data fetching from Yahoo Finance
+- [ ] Technical indicator calculations
+- [ ] Signal generation logic
+- [ ] Slack notification integration
+- [ ] Real-time WebSocket updates
+- [ ] Backtesting framework
 
 ## Architecture Overview
 

@@ -30,6 +30,23 @@ services:
       retries: 5
 
   # Backend Services
+  auth:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://quantpulse:quantpulse@postgres:5432/quantpulse
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn services.auth.main:app --host 0.0.0.0 --port 8000
+
   symbol-management:
     build:
       context: ./backend

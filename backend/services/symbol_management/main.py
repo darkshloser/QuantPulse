@@ -3,14 +3,16 @@
 import logging
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from shared.config import settings
 from shared.database import get_db, engine, Base
-from shared.models import Symbol, SelectedSymbol, SymbolSchema, SymbolListResponse, SelectSymbolRequest, NasdaqImportRequest, ImportSummaryResponse, InstrumentType
+from shared.models import Symbol, SelectedSymbol, SymbolSchema, SymbolListResponse, SelectSymbolRequest, NasdaqImportRequest, ImportSummaryResponse, InstrumentType, User
 from shared.events import event_bus, Event, EventType
 from shared.logging_config import logger as app_logger
 from shared.nasdaq_provider import get_nasdaq_symbols, NasdaqProviderError
+from shared.auth import get_admin_user
 
 # Create tables (safe to call multiple times)
 try:
@@ -22,6 +24,15 @@ app = FastAPI(
     title="Symbol Management Service",
     version="1.0.0",
     description="Manages financial instruments universe",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -90,7 +101,11 @@ async def select_symbol(
 
 
 @app.post("/symbols/import")
-async def import_symbols(symbols: list[SymbolSchema], db: Session = Depends(get_db)):
+async def import_symbols(
+    symbols: list[SymbolSchema],
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
     """Import symbols (admin endpoint)."""
     created = 0
     for sym_data in symbols:
@@ -108,12 +123,11 @@ async def import_symbols(symbols: list[SymbolSchema], db: Session = Depends(get_
 @app.post("/symbols/import/nasdaq", response_model=ImportSummaryResponse)
 async def import_nasdaq_symbols(
     request: NasdaqImportRequest,
+    admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
     """
     Import NASDAQ-listed company shares (admin endpoint).
-
-    TODO v1.1: Add API key or bearer token authentication.
 
     Downloads official NASDAQ symbol directory, filters for stocks only,
     and performs idempotent import (updates existing, no duplicates).

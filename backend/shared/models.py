@@ -3,7 +3,7 @@
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, Float, Integer
 from sqlalchemy.sql import func
 
@@ -16,9 +16,43 @@ class InstrumentType(str, Enum):
     METAL = "METAL"
 
 
+class UserRole(str, Enum):
+    """User roles for authorization."""
+    ADMIN = "ADMIN"
+    USER = "USER"
+
+
+class ApprovalStatus(str, Enum):
+    """User approval status."""
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
 # ============================================================================
 # SQLAlchemy Models
 # ============================================================================
+
+class User(Base):
+    """User account database model."""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, index=True)
+    email = Column(String(255), unique=True, index=True)
+    hashed_password = Column(String(255))
+    role = Column(SQLEnum(UserRole), default=UserRole.USER, index=True)
+    approval_status = Column(
+        SQLEnum(ApprovalStatus), default=ApprovalStatus.PENDING, index=True
+    )
+    profile_picture_url = Column(String(500), nullable=True)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    last_login = Column(DateTime, nullable=True)
+
 
 class Symbol(Base):
     """Symbol database model."""
@@ -79,6 +113,63 @@ class SignalResult(Base):
 # ============================================================================
 # Pydantic Schemas
 # ============================================================================
+
+class UserSchema(BaseModel):
+    """User API schema."""
+    id: int
+    username: str
+    email: str
+    role: UserRole
+    approval_status: ApprovalStatus
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    last_login: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UserCreateRequest(BaseModel):
+    """Request to create a new user (registration)."""
+    username: str
+    email: EmailStr
+    password: str
+
+
+class UserLoginRequest(BaseModel):
+    """Request to login."""
+    username_or_email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    """JWT token response."""
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    user: UserSchema
+
+
+class UserApprovalRequest(BaseModel):
+    """Request to approve/reject a user."""
+    user_id: int
+    approved: bool
+
+
+class UserListResponse(BaseModel):
+    """Response for user list endpoint."""
+    users: List[UserSchema]
+    total: int
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Request to update user profile."""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
 
 class SymbolSchema(BaseModel):
     """Symbol API schema."""

@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from shared.config import settings
@@ -21,6 +22,15 @@ app = FastAPI(
     title="Market Data Retriever Service",
     version="1.0.0",
     description="Fetches and maintains historical price data",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

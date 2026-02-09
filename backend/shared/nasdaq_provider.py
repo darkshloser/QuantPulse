@@ -118,16 +118,14 @@ def _fetch_and_parse(attempt: int) -> List[Dict[str, Any]]:
 
 def filter_nasdaq_symbols(raw_symbols: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Filter NASDAQ directory for common stocks only (+ GLD/SLV special case).
+    Import all NASDAQ symbols (no filtering by type).
 
-    Excludes:
-    - Test symbols (Test Issue = "Y")
-    - ETFs except GLD (SPDR Gold) and SLV (iShares Silver)
-    - Non-equity instruments
+    Includes stocks, ETFs, and other instruments. All symbols are marked is_active=True
+    on import, and can be filtered on retrieval based on is_active flag.
 
-    Returns: List of dicts with keys: {symbol, company_name, market_category, financial_status}
+    Returns: List of dicts with keys: {symbol, company_name, market_category, financial_status, yahoo_symbol}
     """
-    logger.info("Filtering NASDAQ symbols (exclusions: test issues, ETFs except GLD/SLV)")
+    logger.info("Importing all NASDAQ symbols (no type filtering)")
 
     filtered = []
     skipped = 0
@@ -138,21 +136,14 @@ def filter_nasdaq_symbols(raw_symbols: List[Dict[str, Any]]) -> List[Dict[str, A
         market_category = raw.get("market_category", "")
         financial_status = raw.get("financial_status", "")
         test_issue = raw.get("test_issue", "N").upper()
-        etf_flag = raw.get("etf_flag", "N").upper()
 
-        # Always skip test symbols
+        # Only skip test symbols marked by NASDAQ
         if test_issue == "Y":
             logger.debug("Skipping test symbol: %s", symbol)
             skipped += 1
             continue
 
-        # Skip ETFs EXCEPT GLD and SLV
-        if etf_flag == "Y" and symbol not in ("GLD", "SLV"):
-            logger.debug("Skipping ETF: %s", symbol)
-            skipped += 1
-            continue
-
-        # Include this symbol
+        # Include all other symbols (stocks, ETFs, etc.)
         filtered.append(
             {
                 "symbol": symbol,
@@ -164,7 +155,7 @@ def filter_nasdaq_symbols(raw_symbols: List[Dict[str, Any]]) -> List[Dict[str, A
         )
 
     logger.info(
-        "NASDAQ filter results: %d included, %d skipped (test/ETF)",
+        "NASDAQ import results: %d included, %d skipped (test symbols only)",
         len(filtered),
         skipped,
     )

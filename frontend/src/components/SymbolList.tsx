@@ -89,8 +89,10 @@ export const SymbolList: React.FC<SymbolListProps> = ({
               checked={selectedSymbols.has(symbol.symbol)}
               onChange={() => handleToggle(symbol.symbol)}
             />
-            <span className="symbol-name">{symbol.symbol}</span>
-            <span className="symbol-type">{symbol.instrument_type}</span>
+            <div className="symbol-content">
+              <div className="symbol-yahoo">{symbol.yahoo_symbol}</div>
+              <div className="symbol-company">{symbol.company_name}</div>
+            </div>
           </div>
         ))}
       </div>

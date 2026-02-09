@@ -1,14 +1,27 @@
 /**
- * Main application component.
+ * Main application component with routing and authentication.
  */
 
 import { useState, useEffect } from "react"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { SymbolList } from "./components/SymbolList"
 import { SignalPanel } from "./components/SignalPanel"
-import { symbolAPI } from "./api/client"
+import { Login } from "./components/Login"
+import { Register } from "./components/Register"
+import { Landing } from "./components/Landing"
+import { Profile } from "./components/Profile"
+import { Settings } from "./components/Settings"
+import { AuthProvider, useAuth } from "./context/AuthContext"
+import {
+  ProtectedRoute,
+  AdminRoute,
+  UnAuthenticatedRoute,
+} from "./components/ProtectedRoute"
+import { symbolAPI, authAPI } from "./api/client"
 import "./App.css"
 
-function App() {
+function DashboardLayout() {
+  const { user, logout } = useAuth()
   const [selectedSymbols, setSelectedSymbols] = useState<Set<string>>(
     new Set()
   )
@@ -36,11 +49,37 @@ function App() {
     setSelectedSymbols(newSelected)
   }
 
+  const handleLogout = () => {
+    authAPI.logout()
+    logout()
+    window.location.href = "/"
+  }
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>QuantPulse</h1>
-        <p>Market Intelligence Platform</p>
+        <div className="header-left">
+          <h1>QuantPulse</h1>
+          <p>Market Intelligence Platform</p>
+        </div>
+        <div className="header-right">
+          <span className="user-info">
+            Welcome, {user?.first_name || user?.username}
+          </span>
+          {user?.role === "ADMIN" && (
+            <>
+              <a href="/admin/profile" className="nav-link">
+                Profile
+              </a>
+              <a href="/admin/settings" className="nav-link">
+                Settings
+              </a>
+            </>
+          )}
+          <button onClick={handleLogout} className="btn-logout">
+            Logout
+          </button>
+        </div>
       </header>
 
       <div className="app-layout">
@@ -58,6 +97,87 @@ function App() {
         </p>
       </footer>
     </div>
+  )
+}
+
+function AppRouter() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route
+          path="/"
+          element={
+            <UnAuthenticatedRoute>
+              <Landing />
+            </UnAuthenticatedRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <UnAuthenticatedRoute>
+              <Login />
+            </UnAuthenticatedRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <UnAuthenticatedRoute>
+              <Register />
+            </UnAuthenticatedRoute>
+          }
+        />
+
+        {/* Protected Routes - Main App */}
+        <Route
+          path="/app"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin/profile"
+          element={
+            <AdminRoute>
+              <Profile />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminRoute>
+              <Settings />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <DashboardLayout />
+            </AdminRoute>
+          }
+        />
+
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
   )
 }
 

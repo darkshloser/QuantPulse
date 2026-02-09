@@ -1,0 +1,196 @@
+/**
+ * Landing page styling.
+ */
+
+.landing-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-header {
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.landing-header h1 {
+  font-size: 48px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.landing-header p {
+  font-size: 18px;
+  margin: 8px 0 0 0;
+  opacity: 0.9;
+}
+
+.landing-content {
+  flex: 1;
+  padding: 60px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero {
+  background: white;
+  border-radius: 12px;
+  padding: 60px 40px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 60px;
+  text-align: center;
+}
+
+.hero-content h2 {
+  font-size: 36px;
+  color: #333;
+  margin: 0 0 20px 0;
+}
+
+.hero-content p {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 40px 0;
+  line-height: 1.6;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin: 40px 0;
+}
+
+.feature {
+  background: #f8f9fa;
+  padding: 30px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.feature h3 {
+  font-size: 18px;
+  color: #333;
+  margin: 0 0 10px 0;
+}
+
+.feature p {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 12px 32px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-secondary:hover {
+  background-color: #667eea;
+  color: white;
+}
+
+.info {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.info h3 {
+  font-size: 28px;
+  color: #333;
+  margin: 0 0 30px 0;
+  text-align: center;
+}
+
+.info ol {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.info li {
+  font-size: 16px;
+  color: #666;
+  margin: 15px 0;
+  line-height: 1.6;
+}
+
+.info strong {
+  color: #333;
+}
+
+.landing-footer {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.landing-footer p {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .landing-header h1 {
+    font-size: 32px;
+  }
+
+  .hero {
+    padding: 30px 20px;
+  }
+
+  .hero-content h2 {
+    font-size: 24px;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+  }
+}

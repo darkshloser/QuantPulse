@@ -58,18 +58,18 @@ async def startup():
     db = next(get_db())
     try:
         # Check if admin user exists
-        admin = db.query(User).filter(User.username == "darkshloser").first()
+        admin = db.query(User).filter(User.username == settings.admin_username).first()
         if not admin:
             # Create predefined admin account
             admin_user = User(
-                username="darkshloser",
-                email="admin@quantpulse.local",
-                hashed_password=hash_password("QT123456!_qt"),
+                username=settings.admin_username,
+                email=settings.admin_email,
+                hashed_password=hash_password(settings.admin_password),
                 role=UserRole.ADMIN,
                 approval_status=ApprovalStatus.APPROVED,
                 is_active=True,
-                first_name="Admin",
-                last_name="User",
+                first_name="",
+                last_name="",
             )
             db.add(admin_user)
             db.commit()

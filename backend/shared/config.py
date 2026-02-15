@@ -40,11 +40,6 @@ class Settings(BaseSettings):
     # SEC contact for User-Agent header
     sec_user_agent: str
 
-    # NASDAQ Symbol Directory
-    nasdaq_url: str = "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
-    nasdaq_timeout: int = 30
-    nasdaq_retries: int = 3
-
     # Service URLs
     symbol_service_url: str = "http://localhost:8001"
     mdr_service_url: str = "http://localhost:8002"

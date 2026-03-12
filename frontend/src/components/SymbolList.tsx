@@ -77,6 +77,21 @@ export const SymbolList: React.FC<SymbolListProps> = ({
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1
 
+  // Build the window of page buttons: always show first, last, current ±2
+  const pageButtons = (): (number | "...")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    const pages: (number | "...")[] = []
+    const addPage = (p: number) => { if (!pages.includes(p)) pages.push(p) }
+    addPage(1)
+    if (currentPage > 3) pages.push("...")
+    for (let p = Math.max(2, currentPage - 2); p <= Math.min(totalPages - 1, currentPage + 2); p++) addPage(p)
+    if (currentPage < totalPages - 2) pages.push("...")
+    addPage(totalPages)
+    return pages
+  }
+
+  const goToPage = (page: number) => setOffset((page - 1) * PAGE_SIZE)
+
   return (
     <div className="symbol-list">
       <div className="symbol-list-header">
@@ -95,6 +110,9 @@ export const SymbolList: React.FC<SymbolListProps> = ({
       {loading && <div className="loading">Loading symbols...</div>}
 
       <div className="symbol-items">
+        {!loading && symbols.length === 0 && (
+          <div className="no-results">No symbols found</div>
+        )}
         {symbols.map((symbol) => (
           <div
             key={symbol.symbol}
@@ -118,17 +136,35 @@ export const SymbolList: React.FC<SymbolListProps> = ({
       {totalPages > 1 && (
         <div className="symbol-pagination">
           <button
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            className="page-btn"
+            disabled={currentPage === 1}
+            onClick={() => goToPage(currentPage - 1)}
+            title="Previous page"
           >
-            &laquo; Prev
+            ‹
           </button>
-          <span>{currentPage} / {totalPages}</span>
+
+          {pageButtons().map((p, i) =>
+            p === "..." ? (
+              <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
+            ) : (
+              <button
+                key={p}
+                className={`page-btn ${p === currentPage ? "active" : ""}`}
+                onClick={() => goToPage(p as number)}
+              >
+                {p}
+              </button>
+            )
+          )}
+
           <button
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset(offset + PAGE_SIZE)}
+            className="page-btn"
+            disabled={currentPage === totalPages}
+            onClick={() => goToPage(currentPage + 1)}
+            title="Next page"
           >
-            Next &raquo;
+            ›
           </button>
         </div>
       )}

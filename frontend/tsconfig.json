@@ -19,7 +19,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
-    "types": ["vite/client"],
+    "types": ["vite/client", "react", "react-dom"],
 
     "baseUrl": ".",
     "paths": {

@@ -94,6 +94,8 @@ function DashboardLayout({
                 />
                 <SignalPanel selectedSymbols={selectedSymbols} />
             </div>
+            <div className="app-footer"></div>
+            <p>&copy; 2024 QuantPulse. All rights reserved.</p>
         </div>
     );
 }

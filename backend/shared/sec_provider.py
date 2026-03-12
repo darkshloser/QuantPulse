@@ -34,17 +34,17 @@ def fetch_sec_symbols() -> Dict[str, Any]:
     logger.info("Starting SEC ticker directory fetch from %s", sec_url)
 
     last_error = None
-    for attempt in range(1, settings.nasdaq_retries + 1):
+    for attempt in range(1, settings.sec_retries + 1):
         try:
             return _fetch_and_parse(attempt, sec_url)
         except Exception as e:
             last_error = e
-            if attempt < settings.nasdaq_retries:
+            if attempt < settings.sec_retries:
                 wait_time = 2 ** (attempt - 1)  # 1s, 2s, 4s for 3 retries
                 logger.warning(
                     "SEC fetch attempt %d/%d failed: %s. Retrying in %ds...",
                     attempt,
-                    settings.nasdaq_retries,
+                    settings.sec_retries,
                     str(e),
                     wait_time,
                 )
@@ -52,12 +52,12 @@ def fetch_sec_symbols() -> Dict[str, Any]:
             else:
                 logger.error(
                     "SEC fetch failed after %d attempts. Last error: %s",
-                    settings.nasdaq_retries,
+                    settings.sec_retries,
                     str(e),
                 )
 
     raise SecProviderError(
-        f"Failed to fetch SEC ticker directory after {settings.nasdaq_retries} retries: {last_error}"
+        f"Failed to fetch SEC ticker directory after {settings.sec_retries} retries: {last_error}"
     )
 
 
@@ -73,7 +73,7 @@ def _fetch_and_parse(attempt: int, sec_url: str) -> Dict[str, Any]:
         "Host": "www.sec.gov",
     }
 
-    response = requests.get(sec_url, timeout=settings.nasdaq_timeout, headers=headers)
+    response = requests.get(sec_url, timeout=settings.sec_timeout, headers=headers)
     response.raise_for_status()
 
     logger.debug("SEC fetch successful (%d bytes). Parsing...", len(response.text))

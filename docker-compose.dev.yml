@@ -1,0 +1,48 @@
+# Development overrides — hot reload for backend and frontend.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Backend: uvicorn --reload watches backend/ for .py file changes
+# Frontend: vite dev server with HMR (Hot Module Replacement)
+
+services:
+  auth:
+    volumes:
+      - ./backend:/app
+    command: uvicorn services.auth.main:app --host 0.0.0.0 --port 8000 --reload
+
+  symbol-management:
+    volumes:
+      - ./backend:/app
+    command: uvicorn services.symbol_management.main:app --host 0.0.0.0 --port 8001 --reload
+
+  market-data:
+    volumes:
+      - ./backend:/app
+    command: uvicorn services.market_data.main:app --host 0.0.0.0 --port 8002 --reload
+
+  data-analyzer:
+    volumes:
+      - ./backend:/app
+    command: uvicorn services.data_analyzer.main:app --host 0.0.0.0 --port 8003 --reload
+
+  notifier:
+    volumes:
+      - ./backend:/app
+    command: uvicorn services.notifier.main:app --host 0.0.0.0 --port 8004 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules          # keep container's node_modules, don't overwrite with host
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_AUTH_API_URL: http://localhost:8000
+      VITE_SYMBOL_API_URL: http://localhost:8001
+      VITE_MARKET_DATA_API_URL: http://localhost:8002
+      VITE_ANALYZER_API_URL: http://localhost:8003
+      VITE_NOTIFIER_API_URL: http://localhost:8004
+    command: npm run dev -- --host 0.0.0.0 --port 3000

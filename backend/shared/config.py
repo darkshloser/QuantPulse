@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     # SEC contact for User-Agent header
     sec_user_agent: str
+    sec_retries: int = 3
+    sec_timeout: int = 30
 
     # Service URLs
     symbol_service_url: str = "http://localhost:8001"

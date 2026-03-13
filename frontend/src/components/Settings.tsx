@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { authAPI, symbolAPI } from "../api/client";
 import { User } from "../types";
+import { AppHeader } from "./AppHeader";
 import "./Settings.css";
 
 type SettingsTab =
@@ -124,6 +125,8 @@ export function Settings({ onSymbolsImported }: { onSymbolsImported?: () => void
     };
 
     return (
+        <div className="app">
+        <AppHeader />
         <div className="settings-container">
             <h1>Settings</h1>
 
@@ -299,6 +302,7 @@ export function Settings({ onSymbolsImported }: { onSymbolsImported?: () => void
                     </div>
                 )}
             </div>
+        </div>
         </div>
     );
 }

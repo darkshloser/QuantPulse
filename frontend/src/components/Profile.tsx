@@ -6,6 +6,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { authAPI } from "../api/client"
 import { User } from "../types"
+import { AppHeader } from "./AppHeader"
 import "./Profile.css"
 
 export function Profile() {
@@ -45,6 +46,8 @@ export function Profile() {
   }
 
   return (
+    <div className="app">
+    <AppHeader />
     <div className="profile-container">
       <div className="profile-card">
         <h1>Profile</h1>
@@ -119,6 +122,7 @@ export function Profile() {
           </button>
         </form>
       </div>
+    </div>
     </div>
   )
 }

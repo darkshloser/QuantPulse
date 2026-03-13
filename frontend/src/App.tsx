@@ -11,13 +11,14 @@ import { Register } from "./components/Register";
 import { Landing } from "./components/Landing";
 import { Profile } from "./components/Profile";
 import { Settings } from "./components/Settings";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AppHeader } from "./components/AppHeader";
+import { AuthProvider } from "./context/AuthContext";
 import {
     ProtectedRoute,
     AdminRoute,
     UnAuthenticatedRoute,
 } from "./components/ProtectedRoute";
-import { symbolAPI, authAPI } from "./api/client";
+import { symbolAPI } from "./api/client";
 import "./App.css";
 
 function DashboardLayout({
@@ -25,7 +26,6 @@ function DashboardLayout({
 }: {
     symbolRefreshKey?: number;
 }) {
-    const { user, logout } = useAuth();
     const [selectedSymbols, setSelectedSymbols] = useState<Set<string>>(
         new Set(),
     );
@@ -53,38 +53,9 @@ function DashboardLayout({
         setSelectedSymbols(newSelected);
     };
 
-    const handleLogout = () => {
-        authAPI.logout();
-        logout();
-        window.location.href = "/";
-    };
-
     return (
         <div className="app">
-            <header className="app-header">
-                <div className="header-left">
-                    <h1>QuantPulse</h1>
-                    <p>Market Intelligence Platform</p>
-                </div>
-                <div className="header-right">
-                    <span className="user-info">
-                        Welcome, {user?.first_name || user?.username}
-                    </span>
-                    {user?.role === "ADMIN" && (
-                        <>
-                            <a href="/admin/profile" className="nav-link">
-                                Profile
-                            </a>
-                            <a href="/admin/settings" className="nav-link">
-                                Settings
-                            </a>
-                        </>
-                    )}
-                    <button onClick={handleLogout} className="btn-logout">
-                        Logout
-                    </button>
-                </div>
-            </header>
+            <AppHeader />
 
             <div className="app-layout">
                 <SymbolList

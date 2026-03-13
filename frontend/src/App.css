@@ -36,6 +36,11 @@ body {
     flex: 1;
 }
 
+.header-title-link {
+    text-decoration: none;
+    color: inherit;
+}
+
 .app-header h1 {
     margin: 0;
     font-size: 1.8rem;

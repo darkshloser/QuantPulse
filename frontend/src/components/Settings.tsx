@@ -72,9 +72,13 @@ export function Settings({ onSymbolsImported }: { onSymbolsImported?: () => void
     };
 
     const handleRejectUser = async (userId: number) => {
+        if (!window.confirm("Are you sure you want to reject this user? This will permanently remove them from the system.")) {
+            return;
+        }
+
         try {
             await authAPI.rejectUser(userId);
-            setSuccess("User rejected successfully");
+            setSuccess("User rejected and removed from the system");
             setPendingUsers(pendingUsers.filter((u) => u.id !== userId));
             setError("");
         } catch (err: any) {
@@ -83,18 +87,52 @@ export function Settings({ onSymbolsImported }: { onSymbolsImported?: () => void
         }
     };
 
-    const handleDeleteUser = async (userId: number) => {
-        if (!window.confirm("Are you sure you want to deactivate this user?")) {
+    const handleDeactivateUser = async (userId: number) => {
+        if (!window.confirm("Are you sure you want to deactivate this user? This will remove all their selected symbols, analysis signals, and notifications.")) {
             return;
         }
 
         try {
-            await authAPI.deleteUser(userId);
-            setSuccess("User deactivated successfully");
+            const result = await authAPI.deactivateUser(userId);
+            setSuccess(
+                `${result.message}. Removed ${result.symbols_removed} selected symbol(s) and ${result.signals_removed} signal(s).`
+            );
+            setUsers(users.map((u) =>
+                u.id === userId ? { ...u, is_active: false } : u
+            ));
+            setError("");
+        } catch (err: any) {
+            setError("Failed to deactivate user");
+            console.error(err);
+        }
+    };
+
+    const handleReactivateUser = async (userId: number) => {
+        try {
+            const result = await authAPI.reactivateUser(userId);
+            setSuccess(result.message);
+            setUsers(users.map((u) =>
+                u.id === userId ? { ...u, is_active: true, approval_status: result.user.approval_status } : u
+            ));
+            setError("");
+        } catch (err: any) {
+            setError("Failed to reactivate user");
+            console.error(err);
+        }
+    };
+
+    const handleRemoveUser = async (userId: number) => {
+        if (!window.confirm("Are you sure you want to permanently remove this user? This action cannot be undone.")) {
+            return;
+        }
+
+        try {
+            const result = await authAPI.deleteUser(userId);
+            setSuccess(result.message);
             setUsers(users.filter((u) => u.id !== userId));
             setError("");
         } catch (err: any) {
-            setError("Failed to delete user");
+            setError("Failed to remove user");
             console.error(err);
         }
     };
@@ -254,17 +292,40 @@ export function Settings({ onSymbolsImported }: { onSymbolsImported?: () => void
                                                     ).toLocaleDateString()}
                                                 </td>
                                                 <td>
-                                                    {user.is_active && (
+                                                    {user.is_active ? (
                                                         <button
                                                             className="btn btn-sm btn-danger"
                                                             onClick={() =>
-                                                                handleDeleteUser(
+                                                                handleDeactivateUser(
                                                                     user.id,
                                                                 )
                                                             }
                                                         >
                                                             Deactivate
                                                         </button>
+                                                    ) : (
+                                                        <div className="user-actions">
+                                                            <button
+                                                                className="btn btn-sm btn-success"
+                                                                onClick={() =>
+                                                                    handleReactivateUser(
+                                                                        user.id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                Reactivate
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-danger"
+                                                                onClick={() =>
+                                                                    handleRemoveUser(
+                                                                        user.id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </td>
                                             </tr>

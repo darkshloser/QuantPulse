@@ -166,12 +166,30 @@ export const authAPI = {
         return response.data;
     },
 
-    async rejectUser(userId: number): Promise<{ message: string; user: User }> {
+    async rejectUser(userId: number): Promise<{ message: string }> {
         const response = await authClient.post(`/admin/users/${userId}/reject`);
         return response.data;
     },
 
-    async deleteUser(userId: number): Promise<{ message: string }> {
+    async deactivateUser(userId: number): Promise<{
+        message: string;
+        symbols_removed: number;
+        signals_removed: number;
+    }> {
+        const response = await authClient.post(`/admin/users/${userId}/deactivate`);
+        return response.data;
+    },
+
+    async reactivateUser(userId: number): Promise<{ message: string; user: User }> {
+        const response = await authClient.post(`/admin/users/${userId}/reactivate`);
+        return response.data;
+    },
+
+    async deleteUser(userId: number): Promise<{
+        message: string;
+        symbols_removed: number;
+        signals_removed: number;
+    }> {
         const response = await authClient.delete(`/admin/users/${userId}`);
         return response.data;
     },

@@ -12,6 +12,8 @@ from shared.models import (
     User,
     UserRole,
     ApprovalStatus,
+    SelectedSymbol,
+    SignalResult,
     UserCreateRequest,
     UserLoginRequest,
     TokenResponse,
@@ -271,7 +273,7 @@ async def reject_user(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    """Reject a pending user registration (admin only)."""
+    """Reject a pending user registration and remove from database (admin only)."""
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -280,11 +282,99 @@ async def reject_user(
             detail="User not found",
         )
 
-    user.approval_status = ApprovalStatus.REJECTED
+    if user.approval_status != ApprovalStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not in pending status",
+        )
+
+    # Safety net: remove any user data (pending users shouldn't have data, but just in case)
+    db.query(SelectedSymbol).filter(SelectedSymbol.user_id == user_id).delete(synchronize_session="fetch")
+    db.query(SignalResult).filter(SignalResult.user_id == user_id).delete(synchronize_session="fetch")
+
+    # Hard-delete the user row — rejected users don't need to persist
+    db.delete(user)
+    db.commit()
+
+    return {"message": "User rejected and removed"}
+
+
+@app.post("/admin/users/{user_id}/deactivate")
+async def deactivate_user(
+    user_id: int,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Deactivate a user and clean up all their related data (admin only)."""
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.id == admin_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own admin account",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already deactivated",
+        )
+
+    # Cascading cleanup: remove all user-related data in one transaction
+    symbols_removed = (
+        db.query(SelectedSymbol)
+        .filter(SelectedSymbol.user_id == user_id)
+        .delete(synchronize_session="fetch")
+    )
+    signals_removed = (
+        db.query(SignalResult)
+        .filter(SignalResult.user_id == user_id)
+        .delete(synchronize_session="fetch")
+    )
+
+    user.is_active = False
+    db.commit()
+
+    return {
+        "message": f"User '{user.username}' deactivated",
+        "symbols_removed": symbols_removed,
+        "signals_removed": signals_removed,
+    }
+
+
+@app.post("/admin/users/{user_id}/reactivate")
+async def reactivate_user(
+    user_id: int,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Re-activate a deactivated user (admin only)."""
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already active",
+        )
+
+    user.is_active = True
+    user.approval_status = ApprovalStatus.APPROVED
     db.commit()
     db.refresh(user)
 
-    return {"message": "User rejected", "user": UserSchema.from_orm(user)}
+    return {"message": f"User '{user.username}' reactivated", "user": UserSchema.from_orm(user)}
 
 
 @app.delete("/admin/users/{user_id}")
@@ -293,7 +383,7 @@ async def delete_user(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    """Delete or deactivate a user (admin only)."""
+    """Permanently remove a user and all their data from the database (admin only)."""
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -302,15 +392,31 @@ async def delete_user(
             detail="User not found",
         )
 
-    # Prevent deletion of the admin user
     if user.id == admin_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete your own admin account",
         )
 
-    # Deactivate instead of delete
-    user.is_active = False
+    # Cascading cleanup: remove all user-related data
+    symbols_removed = (
+        db.query(SelectedSymbol)
+        .filter(SelectedSymbol.user_id == user_id)
+        .delete(synchronize_session="fetch")
+    )
+    signals_removed = (
+        db.query(SignalResult)
+        .filter(SignalResult.user_id == user_id)
+        .delete(synchronize_session="fetch")
+    )
+
+    # Hard-delete the user row
+    username = user.username
+    db.delete(user)
     db.commit()
 
-    return {"message": "User deactivated"}
+    return {
+        "message": f"User '{username}' permanently removed",
+        "symbols_removed": symbols_removed,
+        "signals_removed": signals_removed,
+    }

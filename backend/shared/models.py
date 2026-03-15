@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, Float, Integer
+from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, Float, Integer, ForeignKey
 from sqlalchemy.sql import func
 
 from shared.database import Base
@@ -72,10 +72,11 @@ class Symbol(Base):
 
 
 class SelectedSymbol(Base):
-    """User-selected symbols tracking."""
+    """User-selected symbols tracking (per-user)."""
     __tablename__ = "selected_symbols"
 
-    symbol = Column(String(50), primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    symbol = Column(String(50), primary_key=True)
     selected_at = Column(DateTime, server_default=func.now())
 
 
@@ -99,7 +100,8 @@ class SignalResult(Base):
     """Analysis results and signal triggers."""
     __tablename__ = "signal_results"
 
-    id = Column(String, primary_key=True, index=True)  # symbol:timestamp
+    id = Column(String, primary_key=True, index=True)  # user_id:symbol:timestamp
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
     symbol = Column(String(50), index=True)
     signal_type = Column(String(50))  # e.g., "RSI_OVERSOLD", "ATR_EXPANSION"
     timestamp = Column(DateTime, server_default=func.now())
@@ -215,6 +217,7 @@ class MarketDataSchema(BaseModel):
 
 class SignalSchema(BaseModel):
     """Signal result API schema."""
+    user_id: int
     symbol: str
     signal_type: str
     timestamp: datetime

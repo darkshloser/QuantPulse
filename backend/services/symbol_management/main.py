@@ -13,7 +13,7 @@ from shared.models import Symbol, SelectedSymbol, SymbolSchema, SymbolListRespon
 from shared.events import event_bus, Event, EventType
 from shared.logging_config import logger as app_logger
 from shared.sec_provider import get_sec_symbols, SecProviderError
-from shared.auth import get_admin_user
+from shared.auth import get_admin_user, get_current_user
 
 # Create tables (safe to call multiple times)
 try:
@@ -165,30 +165,40 @@ async def list_symbols(
 
 
 @app.get("/symbols/selected")
-async def get_selected_symbols(db: Session = Depends(get_db)):
-    """Get user-selected symbols."""
-    selected = db.query(SelectedSymbol).all()
+async def get_selected_symbols(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get selected symbols for the current user."""
+    selected = db.query(SelectedSymbol).filter(
+        SelectedSymbol.user_id == current_user.id
+    ).all()
     return {"symbols": [s.symbol for s in selected]}
 
 
 @app.post("/symbols/select")
 async def select_symbol(
     request: SelectSymbolRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Select or deselect a symbol."""
+    """Select or deselect a symbol for the current user."""
     # Verify symbol exists
     symbol = db.query(Symbol).filter(Symbol.symbol == request.symbol).first()
     if not symbol:
         raise HTTPException(status_code=404, detail="Symbol not found")
 
     if request.selected:
-        # Add to selected symbols
+        # Add to selected symbols for this user
         existing = db.query(SelectedSymbol).filter(
-            SelectedSymbol.symbol == request.symbol
+            SelectedSymbol.user_id == current_user.id,
+            SelectedSymbol.symbol == request.symbol,
         ).first()
         if not existing:
-            selected = SelectedSymbol(symbol=request.symbol)
+            selected = SelectedSymbol(
+                user_id=current_user.id,
+                symbol=request.symbol,
+            )
             db.add(selected)
             db.commit()
             db.refresh(selected)
@@ -196,18 +206,19 @@ async def select_symbol(
             # Publish event
             event = Event(
                 EventType.SYMBOLS_SELECTED,
-                {"symbol": request.symbol, "action": "selected"},
+                {"symbol": request.symbol, "action": "selected", "user_id": current_user.id},
             )
             event_bus.publish(event)
-            app_logger.info(f"Symbol selected: {request.symbol}")
+            app_logger.info(f"Symbol selected: {request.symbol} by user {current_user.id}")
 
     else:
-        # Remove from selected symbols
+        # Remove from selected symbols for this user
         db.query(SelectedSymbol).filter(
-            SelectedSymbol.symbol == request.symbol
+            SelectedSymbol.user_id == current_user.id,
+            SelectedSymbol.symbol == request.symbol,
         ).delete()
         db.commit()
-        app_logger.info(f"Symbol deselected: {request.symbol}")
+        app_logger.info(f"Symbol deselected: {request.symbol} by user {current_user.id}")
 
     return {"symbol": request.symbol, "selected": request.selected}
 

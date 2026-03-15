@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from shared.config import settings
 from shared.database import get_db, engine, Base
-from shared.models import Symbol, SelectedSymbol, MarketData, MarketDataSchema
+from shared.models import Symbol, SelectedSymbol, MarketData, MarketDataSchema, User
 from shared.events import event_bus, Event, EventType
 from shared.logging_config import logger as app_logger
+from shared.auth import get_current_user
 
 # Create tables (safe to call multiple times)
 try:
@@ -41,7 +42,11 @@ async def health_check():
 
 
 @app.get("/market-data/{symbol}")
-async def get_market_data(symbol: str, db: Session = Depends(get_db)):
+async def get_market_data(
+    symbol: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Get historical market data for a symbol."""
     data = db.query(MarketData).filter(MarketData.symbol == symbol).order_by(
         MarketData.date.desc()
@@ -54,15 +59,18 @@ async def get_market_data(symbol: str, db: Session = Depends(get_db)):
 
 
 @app.post("/fetch/{symbol}")
-async def fetch_symbol_data(symbol: str, db: Session = Depends(get_db)):
+async def fetch_symbol_data(
+    symbol: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Manually trigger data fetch for a symbol."""
-    # This would call Yahoo Finance provider
-    # For now, just a placeholder
-    app_logger.info(f"Fetching market data for {symbol}")
+    app_logger.info(f"Fetching market data for {symbol} (user {current_user.id})")
 
-    # Check if symbol is in selected symbols
+    # Check if symbol is in current user's selected symbols
     selected = db.query(SelectedSymbol).filter(
-        SelectedSymbol.symbol == symbol
+        SelectedSymbol.user_id == current_user.id,
+        SelectedSymbol.symbol == symbol,
     ).first()
     if not selected:
         raise HTTPException(status_code=400, detail="Symbol not selected")
@@ -75,10 +83,15 @@ async def fetch_symbol_data(symbol: str, db: Session = Depends(get_db)):
 
 
 @app.post("/fetch-all")
-async def fetch_all_selected_symbols(db: Session = Depends(get_db)):
-    """Fetch market data for all selected symbols."""
-    selected = db.query(SelectedSymbol).all()
-    app_logger.info(f"Fetching data for {len(selected)} symbols")
+async def fetch_all_selected_symbols(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fetch market data for all of the current user's selected symbols."""
+    selected = db.query(SelectedSymbol).filter(
+        SelectedSymbol.user_id == current_user.id
+    ).all()
+    app_logger.info(f"Fetching data for {len(selected)} symbols (user {current_user.id})")
 
     results = []
     for sel_sym in selected:

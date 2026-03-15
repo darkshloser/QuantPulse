@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from shared.config import settings
 from shared.database import get_db, engine, Base
-from shared.models import SignalResult
+from shared.models import SignalResult, User
 from shared.logging_config import logger as app_logger
+from shared.auth import get_current_user
 
 # Create tables (safe to call multiple times)
 try:
@@ -39,10 +40,17 @@ async def health_check():
 
 
 @app.post("/notify/slack/{signal_id}")
-async def send_slack_notification(signal_id: str, db: Session = Depends(get_db)):
-    """Send Slack notification for a signal."""
+async def send_slack_notification(
+    signal_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Send Slack notification for a signal (owned by current user)."""
     signal = db.query(SignalResult).filter(SignalResult.id == signal_id).first()
     if not signal:
+        return {"error": "Signal not found"}
+
+    if signal.user_id != current_user.id:
         return {"error": "Signal not found"}
 
     # TODO: Format message with symbol, signal type, confidence, explanation
@@ -51,7 +59,7 @@ async def send_slack_notification(signal_id: str, db: Session = Depends(get_db))
     # TODO: Avoid duplicate notifications (one per symbol per run)
     # TODO: Send to Slack webhook
 
-    app_logger.info(f"Slack notification sent for signal: {signal_id}")
+    app_logger.info(f"Slack notification sent for signal: {signal_id} (user {current_user.id})")
     signal.notified = True
     db.commit()
 
@@ -59,25 +67,36 @@ async def send_slack_notification(signal_id: str, db: Session = Depends(get_db))
 
 
 @app.post("/notify/gui/{signal_id}")
-async def send_gui_notification(signal_id: str, db: Session = Depends(get_db)):
-    """Send GUI notification for a signal."""
+async def send_gui_notification(
+    signal_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Send GUI notification for a signal (owned by current user)."""
     signal = db.query(SignalResult).filter(SignalResult.id == signal_id).first()
     if not signal:
+        return {"error": "Signal not found"}
+
+    if signal.user_id != current_user.id:
         return {"error": "Signal not found"}
 
     # TODO: Format message for GUI
     # TODO: Send via WebSocket to connected clients
     # TODO: Highlight symbol in selected symbols list
 
-    app_logger.info(f"GUI notification sent for signal: {signal_id}")
+    app_logger.info(f"GUI notification sent for signal: {signal_id} (user {current_user.id})")
     return {"signal_id": signal_id, "status": "sent"}
 
 
 @app.get("/notifications")
-async def get_recent_notifications(db: Session = Depends(get_db)):
-    """Get recent notifications (for GUI)."""
+async def get_recent_notifications(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get recent notifications for the current user."""
     signals = db.query(SignalResult).filter(
-        SignalResult.notified == True
+        SignalResult.user_id == current_user.id,
+        SignalResult.notified == True,
     ).order_by(SignalResult.notified_at.desc()).limit(20).all()
 
     return [

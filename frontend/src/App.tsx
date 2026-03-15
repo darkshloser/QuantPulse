@@ -53,6 +53,15 @@ function DashboardLayout({
         setSelectedSymbols(newSelected);
     };
 
+    const handleRemoveSymbol = async (symbol: string) => {
+        try {
+            await symbolAPI.selectSymbol(symbol, false);
+            handleToggleSymbol(symbol, false);
+        } catch (err) {
+            console.error("Failed to remove symbol:", err);
+        }
+    };
+
     return (
         <div className="app">
             <AppHeader />
@@ -63,7 +72,7 @@ function DashboardLayout({
                     onToggle={handleToggleSymbol}
                     refreshKey={symbolRefreshKey}
                 />
-                <SignalPanel selectedSymbols={selectedSymbols} />
+                <SignalPanel selectedSymbols={selectedSymbols} onRemoveSymbol={handleRemoveSymbol} />
             </div>
             <div className="app-footer"></div>
             <p>&copy; 2024 QuantPulse. All rights reserved.</p>

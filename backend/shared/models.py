@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, Float, Integer, ForeignKey
+from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, Float, Integer, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.sql import func
 
 from shared.database import Base
@@ -112,6 +112,38 @@ class SignalResult(Base):
     notified_at = Column(DateTime, nullable=True)
 
 
+class Indicator(Base):
+    """Master registry of available technical indicators."""
+    __tablename__ = "indicators"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(String(500), nullable=True)
+    default_params = Column(String(1000), nullable=True)  # JSON string
+    source_code = Column(Text, nullable=True)  # Python source for future custom indicators
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # None = system built-in
+    is_public = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class UserSymbolIndicator(Base):
+    """Per-user, per-symbol indicator assignments."""
+    __tablename__ = "user_symbol_indicators"
+    __table_args__ = (
+        UniqueConstraint("user_id", "symbol", "indicator_id", name="uq_user_symbol_indicator"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    symbol = Column(String(50), nullable=False, index=True)
+    indicator_id = Column(Integer, ForeignKey("indicators.id"), nullable=False, index=True)
+    params = Column(String(1000), nullable=True)  # JSON override of default_params
+    result = Column(Boolean, nullable=True)  # Latest evaluation: True/False/null
+    evaluated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 # ============================================================================
 # Pydantic Schemas
 # ============================================================================
@@ -171,6 +203,7 @@ class ProfileUpdateRequest(BaseModel):
     """Request to update user profile."""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 class SymbolSchema(BaseModel):
@@ -243,3 +276,35 @@ class ImportSummaryResponse(BaseModel):
     updated: int
     skipped: int
     timestamp: datetime
+
+
+class IndicatorSchema(BaseModel):
+    """Indicator API schema."""
+    id: int
+    name: str
+    description: Optional[str] = None
+    default_params: Optional[str] = None
+    is_public: bool = True
+    owner_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UserSymbolIndicatorSchema(BaseModel):
+    """User-symbol indicator assignment API schema."""
+    id: int
+    indicator_id: int
+    indicator_name: str
+    symbol: str
+    params: Optional[str] = None
+    result: Optional[bool] = None
+    evaluated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AssignIndicatorRequest(BaseModel):
+    """Request to assign an indicator to a symbol."""
+    indicator_id: int

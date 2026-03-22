@@ -1,0 +1,163 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 480px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close-btn:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-error {
+    padding: 0.75rem;
+    background-color: #ffebee;
+    color: #d32f2f;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.modal-loading,
+.modal-empty {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.indicator-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.indicator-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.indicator-option:hover {
+    border-color: #1976d2;
+    background-color: #f5f9ff;
+}
+
+.indicator-option.selected {
+    border-color: #1976d2;
+    background-color: #e3f2fd;
+}
+
+.indicator-option input[type="checkbox"] {
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.indicator-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.indicator-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.indicator-desc {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.modal-footer .btn {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.modal-footer .btn-secondary {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.modal-footer .btn-secondary:hover:not(:disabled) {
+    background-color: #d0d0d0;
+}
+
+.modal-footer .btn-primary {
+    background-color: #1976d2;
+    color: white;
+}
+
+.modal-footer .btn-primary:hover:not(:disabled) {
+    background-color: #1565c0;
+}
+
+.modal-footer .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

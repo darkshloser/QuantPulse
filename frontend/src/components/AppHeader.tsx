@@ -34,15 +34,13 @@ export function AppHeader() {
                 <span className="user-info">
                     Welcome, {user?.first_name || user?.username}
                 </span>
+                <Link to="/profile" className="nav-link">
+                    Profile
+                </Link>
                 {user?.role === "ADMIN" && (
-                    <>
-                        <Link to="/admin/profile" className="nav-link">
-                            Profile
-                        </Link>
-                        <Link to="/admin/settings" className="nav-link">
-                            Settings
-                        </Link>
-                    </>
+                    <Link to="/admin/settings" className="nav-link">
+                        Settings
+                    </Link>
                 )}
                 <button onClick={handleLogout} className="btn-logout">
                     Logout

@@ -59,6 +59,11 @@
   color: #1976d2;
 }
 
+.badge-user {
+  background-color: #e8f5e9;
+  color: #388e3c;
+}
+
 .profile-form h2 {
   font-size: 20px;
   color: #333;

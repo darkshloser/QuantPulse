@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     jwt_expiration_hours: int = 24
     jwt_refresh_expiration_days: int = 30
 
+    # Celery
+    celery_broker_url: str = ""
+
     # Slack
     slack_webhook_url: str = ""
     slack_enabled: bool = False

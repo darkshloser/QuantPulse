@@ -3,7 +3,7 @@
  */
 
 import axios, { AxiosError } from "axios";
-import { Symbol, Signal, User, AuthToken } from "../types";
+import { Symbol, Signal, User, AuthToken, Indicator, UserSymbolIndicator } from "../types";
 
 const AUTH_API_BASE =
     (import.meta.env.VITE_AUTH_API_URL as string) || "http://localhost:8000";
@@ -134,10 +134,11 @@ export const authAPI = {
         return response.data;
     },
 
-    async updateProfile(firstName?: string, lastName?: string): Promise<User> {
+    async updateProfile(firstName?: string, lastName?: string, email?: string): Promise<User> {
         const response = await authClient.put("/me/profile", {
             first_name: firstName,
             last_name: lastName,
+            email: email,
         });
         return response.data;
     },
@@ -268,12 +269,34 @@ export const analyzerAPI = {
         const response = await analyzerClient.post("/analyze-all");
         return response.data;
     },
+
+    async getIndicators(): Promise<{ indicators: Indicator[] }> {
+        const response = await analyzerClient.get("/indicators");
+        return response.data;
+    },
+
+    async getAssignedIndicators(symbol: string): Promise<{ indicators: UserSymbolIndicator[] }> {
+        const response = await analyzerClient.get(`/indicators/${symbol}/assigned`);
+        return response.data;
+    },
+
+    async assignIndicator(symbol: string, indicatorId: number): Promise<{ message: string; id: number }> {
+        const response = await analyzerClient.post(`/indicators/${symbol}/assign`, { indicator_id: indicatorId });
+        return response.data;
+    },
+
+    async removeIndicator(symbol: string, indicatorId: number): Promise<{ message: string }> {
+        const response = await analyzerClient.delete(`/indicators/${symbol}/assign/${indicatorId}`);
+        return response.data;
+    },
 };
 
 // Notifier API
 export const notifierAPI = {
-    async getNotifications() {
-        const response = await notifierClient.get("/notifications");
+    async getNotifications(symbol?: string) {
+        const params: Record<string, string> = {};
+        if (symbol) params.symbol = symbol;
+        const response = await notifierClient.get("/notifications", { params });
         return response.data;
     },
 };

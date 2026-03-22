@@ -1,10 +1,11 @@
 /**
- * Main panel: Selected symbols and triggered signals.
+ * Main panel: Selected symbols, indicators & analysis, and recent signals.
  */
 
-import React, { useState, useEffect } from "react";
-import { Signal } from "../types";
+import React, { useState, useEffect, useCallback } from "react";
+import { Signal, UserSymbolIndicator } from "../types";
 import { analyzerAPI, notifierAPI } from "../api/client";
+import { IndicatorModal } from "./IndicatorModal";
 import "./SignalPanel.css";
 
 interface SignalPanelProps {
@@ -16,73 +17,132 @@ export const SignalPanel: React.FC<SignalPanelProps> = ({
     selectedSymbols,
     onRemoveSymbol,
 }) => {
+    const [activeSymbol, setActiveSymbol] = useState<string | null>(null);
+    const [assignedIndicators, setAssignedIndicators] = useState<
+        UserSymbolIndicator[]
+    >([]);
     const [signals, setSignals] = useState<Signal[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [showIndicatorModal, setShowIndicatorModal] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Auto-select first symbol when selected symbols change
     useEffect(() => {
-        loadSignals();
-        // Poll for new signals every 60 seconds
-        const interval = setInterval(loadSignals, 60000);
-        return () => clearInterval(interval);
+        const symbolsArray = Array.from(selectedSymbols);
+        if (symbolsArray.length > 0) {
+            if (!activeSymbol || !selectedSymbols.has(activeSymbol)) {
+                setActiveSymbol(symbolsArray[0]);
+            }
+        } else {
+            setActiveSymbol(null);
+        }
     }, [selectedSymbols]);
 
-    const loadSignals = async () => {
+    // Load indicators and signals when active symbol changes
+    useEffect(() => {
+        if (activeSymbol) {
+            loadAssignedIndicators(activeSymbol);
+            loadSignals(activeSymbol);
+        } else {
+            setAssignedIndicators([]);
+            setSignals([]);
+        }
+    }, [activeSymbol]);
+
+    // Poll signals every 60 seconds
+    useEffect(() => {
+        if (!activeSymbol) return;
+        const interval = setInterval(
+            () => loadSignals(activeSymbol),
+            60000,
+        );
+        return () => clearInterval(interval);
+    }, [activeSymbol]);
+
+    const loadAssignedIndicators = async (symbol: string) => {
         try {
-            const notifications = await notifierAPI.getNotifications();
-            setSignals(notifications);
+            const data = await analyzerAPI.getAssignedIndicators(symbol);
+            setAssignedIndicators(data.indicators);
         } catch (err) {
-            setError(
-                err instanceof Error ? err.message : "Failed to load signals",
-            );
+            setError("Failed to load indicators");
         }
     };
 
-    const runAnalysis = async () => {
-        setLoading(true);
+    const loadSignals = async (symbol: string) => {
         try {
-            await analyzerAPI.analyzeAll();
-            await loadSignals();
+            const notifications = await notifierAPI.getNotifications(symbol);
+            setSignals(notifications);
         } catch (err) {
-            setError(
-                err instanceof Error ? err.message : "Failed to run analysis",
-            );
-        } finally {
-            setLoading(false);
+            setError("Failed to load signals");
         }
+    };
+
+    const handleRemoveIndicator = async (indicatorId: number) => {
+        if (!activeSymbol) return;
+        try {
+            await analyzerAPI.removeIndicator(activeSymbol, indicatorId);
+            setAssignedIndicators(
+                assignedIndicators.filter(
+                    (a) => a.indicator_id !== indicatorId,
+                ),
+            );
+        } catch (err) {
+            setError("Failed to remove indicator");
+        }
+    };
+
+    const handleIndicatorModalApply = useCallback(() => {
+        setShowIndicatorModal(false);
+        if (activeSymbol) {
+            loadAssignedIndicators(activeSymbol);
+        }
+    }, [activeSymbol]);
+
+    const renderResult = (result: boolean | null) => {
+        if (result === true)
+            return <span className="result-true">&#10003;</span>;
+        if (result === false)
+            return <span className="result-false">&#10007;</span>;
+        return <span className="result-null">&mdash;</span>;
     };
 
     return (
         <div className="signal-panel">
-            <div className="panel-header">
-                <h2>Selected Symbols & Signals</h2>
-                <button
-                    onClick={runAnalysis}
-                    disabled={loading || selectedSymbols.size === 0}
-                    className="analyze-btn"
-                >
-                    {loading ? "Analyzing..." : "Analyze Now"}
-                </button>
-            </div>
+            {error && (
+                <div className="error">
+                    {error}
+                    <button
+                        className="error-dismiss"
+                        onClick={() => setError(null)}
+                    >
+                        &times;
+                    </button>
+                </div>
+            )}
 
-            {error && <div className="error">{error}</div>}
-
-            <div className="selected-symbols">
-                <h3>Selected ({selectedSymbols.size})</h3>
+            {/* Section 1: Selected Symbols */}
+            <div className="panel-section">
+                <h3>Selected Symbols ({selectedSymbols.size})</h3>
                 <div className="symbols-grid">
                     {selectedSymbols.size === 0 ? (
                         <p className="empty">No symbols selected</p>
                     ) : (
                         Array.from(selectedSymbols).map((symbol) => (
-                            <div key={symbol} className="symbol-badge">
+                            <div
+                                key={symbol}
+                                className={`symbol-badge ${activeSymbol === symbol ? "active" : ""}`}
+                                onClick={() => setActiveSymbol(symbol)}
+                            >
                                 {symbol}
                                 {onRemoveSymbol && (
                                     <button
                                         className="badge-remove-btn"
-                                        onClick={() => onRemoveSymbol(symbol)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRemoveSymbol(symbol);
+                                        }}
                                         title="Remove"
                                     >
-                                        ×
+                                        &times;
                                     </button>
                                 )}
                             </div>
@@ -91,52 +151,119 @@ export const SignalPanel: React.FC<SignalPanelProps> = ({
                 </div>
             </div>
 
-            <div className="signals-section">
+            {/* Section 2: Indicators & Analysis */}
+            <div className="panel-section">
+                <div className="section-header">
+                    <h3>Indicators &amp; Analysis</h3>
+                    <div className="section-actions">
+                        <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setShowIndicatorModal(true)}
+                            disabled={!activeSymbol}
+                        >
+                            Indicators
+                        </button>
+                        <button
+                            className="btn btn-sm btn-secondary"
+                            disabled
+                            title="Coming soon"
+                        >
+                            Editor
+                        </button>
+                    </div>
+                </div>
+
+                {!activeSymbol ? (
+                    <p className="empty">Select a symbol to manage indicators</p>
+                ) : assignedIndicators.length === 0 ? (
+                    <p className="empty">
+                        No indicators assigned to {activeSymbol}
+                    </p>
+                ) : (
+                    <div className="indicator-table-wrapper">
+                        <table className="indicator-table">
+                            <thead>
+                                <tr>
+                                    <th>Indicator</th>
+                                    <th>Result</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {assignedIndicators.map((indicator) => (
+                                    <tr key={indicator.id}>
+                                        <td className="indicator-name-cell">
+                                            {indicator.indicator_name}
+                                        </td>
+                                        <td className="indicator-result-cell">
+                                            {renderResult(indicator.result)}
+                                        </td>
+                                        <td className="indicator-actions-cell">
+                                            <button
+                                                className="btn btn-xs btn-danger"
+                                                onClick={() =>
+                                                    handleRemoveIndicator(
+                                                        indicator.indicator_id,
+                                                    )
+                                                }
+                                            >
+                                                Remove
+                                            </button>
+                                            <button
+                                                className="btn btn-xs btn-secondary"
+                                                disabled
+                                                title="Coming soon"
+                                            >
+                                                Edit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Section 3: Recent Signals */}
+            <div className="panel-section">
                 <h3>Recent Signals</h3>
-                {signals.length === 0 ? (
-                    <p className="empty">No signals triggered</p>
+                {!activeSymbol ? (
+                    <p className="empty">Select a symbol to view signals</p>
+                ) : signals.length === 0 ? (
+                    <p className="empty">No signals for {activeSymbol}</p>
                 ) : (
                     <div className="signals-list">
                         {signals.map((signal, idx) => (
                             <div key={idx} className="signal-item">
                                 <div className="signal-header">
-                                    <span className="signal-symbol">
-                                        {signal.symbol}
-                                    </span>
                                     <span className="signal-type">
                                         {signal.signal_type}
                                     </span>
-                                    <span className="signal-confidence">
-                                        {(signal.confidence * 100).toFixed(0)}%
+                                    <span className="signal-time">
+                                        {new Date(
+                                            signal.timestamp,
+                                        ).toLocaleString()}
                                     </span>
                                 </div>
-                                <div className="signal-body">
-                                    <p className="signal-explanation">
-                                        {signal.explanation}
-                                    </p>
-                                    <div className="signal-indicators">
-                                        {signal.indicators_passed.map(
-                                            (ind, i) => (
-                                                <span
-                                                    key={i}
-                                                    className="indicator-tag"
-                                                >
-                                                    {ind}
-                                                </span>
-                                            ),
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="signal-footer">
-                                    {new Date(
-                                        signal.timestamp,
-                                    ).toLocaleString()}
-                                </div>
+                                <p className="signal-explanation">
+                                    {signal.explanation}
+                                </p>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Indicator Selection Modal */}
+            {showIndicatorModal && activeSymbol && (
+                <IndicatorModal
+                    symbol={activeSymbol}
+                    assignedIndicators={assignedIndicators}
+                    onClose={() => setShowIndicatorModal(false)}
+                    onApply={handleIndicatorModalApply}
+                />
+            )}
         </div>
     );
 };

@@ -58,6 +58,25 @@ export interface Signal {
   indicators_passed: string[]
 }
 
+export interface Indicator {
+  id: number
+  name: string
+  description?: string
+  default_params?: string
+  is_public: boolean
+  owner_id?: number
+}
+
+export interface UserSymbolIndicator {
+  id: number
+  indicator_id: number
+  indicator_name: string
+  symbol: string
+  params?: string
+  result: boolean | null
+  evaluated_at?: string
+}
+
 export interface MarketData {
   symbol: string
   date: string

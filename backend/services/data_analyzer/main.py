@@ -2,13 +2,18 @@
 
 import logging
 from datetime import datetime
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from shared.config import settings
 from shared.database import get_db, engine, Base
-from shared.models import Symbol, SelectedSymbol, MarketData, SignalResult, SignalSchema, User
+from sqlalchemy import or_
+from shared.models import (
+    Symbol, SelectedSymbol, MarketData, SignalResult, SignalSchema, User,
+    Indicator, UserSymbolIndicator, IndicatorSchema, UserSymbolIndicatorSchema,
+    AssignIndicatorRequest,
+)
 from shared.events import event_bus, Event, EventType
 from shared.logging_config import logger as app_logger
 from shared.auth import get_current_user
@@ -109,6 +114,125 @@ async def analyze_all_symbols(
     event_bus.publish(event)
 
     return {"total": len(results), "results": results}
+
+
+# ============================================================================
+# Indicator CRUD Endpoints
+# ============================================================================
+
+@app.get("/indicators")
+async def list_indicators(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all indicators visible to the current user (public + owned)."""
+    indicators = db.query(Indicator).filter(
+        or_(
+            Indicator.is_public == True,
+            Indicator.owner_id == current_user.id,
+        )
+    ).order_by(Indicator.name).all()
+
+    return {"indicators": [IndicatorSchema.from_orm(i) for i in indicators]}
+
+
+@app.get("/indicators/{symbol}/assigned")
+async def get_assigned_indicators(
+    symbol: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List indicators assigned to a symbol for the current user."""
+    assignments = (
+        db.query(UserSymbolIndicator, Indicator.name)
+        .join(Indicator, UserSymbolIndicator.indicator_id == Indicator.id)
+        .filter(
+            UserSymbolIndicator.user_id == current_user.id,
+            UserSymbolIndicator.symbol == symbol,
+        )
+        .order_by(Indicator.name)
+        .all()
+    )
+
+    return {
+        "indicators": [
+            UserSymbolIndicatorSchema(
+                id=assignment.id,
+                indicator_id=assignment.indicator_id,
+                indicator_name=name,
+                symbol=assignment.symbol,
+                params=assignment.params,
+                result=assignment.result,
+                evaluated_at=assignment.evaluated_at,
+            )
+            for assignment, name in assignments
+        ]
+    }
+
+
+@app.post("/indicators/{symbol}/assign")
+async def assign_indicator(
+    symbol: str,
+    request: AssignIndicatorRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Assign an indicator to a symbol for the current user."""
+    # Verify indicator exists and is visible to user
+    indicator = db.query(Indicator).filter(
+        Indicator.id == request.indicator_id,
+        or_(
+            Indicator.is_public == True,
+            Indicator.owner_id == current_user.id,
+        ),
+    ).first()
+    if not indicator:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Indicator not found")
+
+    # Check if already assigned
+    existing = db.query(UserSymbolIndicator).filter(
+        UserSymbolIndicator.user_id == current_user.id,
+        UserSymbolIndicator.symbol == symbol,
+        UserSymbolIndicator.indicator_id == request.indicator_id,
+    ).first()
+    if existing:
+        return {"message": "Indicator already assigned", "id": existing.id}
+
+    assignment = UserSymbolIndicator(
+        user_id=current_user.id,
+        symbol=symbol,
+        indicator_id=request.indicator_id,
+    )
+    db.add(assignment)
+    db.commit()
+    db.refresh(assignment)
+
+    return {"message": f"Indicator '{indicator.name}' assigned to {symbol}", "id": assignment.id}
+
+
+@app.delete("/indicators/{symbol}/assign/{indicator_id}")
+async def remove_indicator(
+    symbol: str,
+    indicator_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove an indicator assignment from a symbol for the current user."""
+    deleted = (
+        db.query(UserSymbolIndicator)
+        .filter(
+            UserSymbolIndicator.user_id == current_user.id,
+            UserSymbolIndicator.symbol == symbol,
+            UserSymbolIndicator.indicator_id == indicator_id,
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.commit()
+
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    return {"message": "Indicator removed"}
 
 
 if __name__ == "__main__":

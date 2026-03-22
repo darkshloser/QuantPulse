@@ -128,13 +128,23 @@ function AppRouter() {
                     }
                 />
 
+                {/* Profile - available to all authenticated users */}
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <Profile />
+                        </ProtectedRoute>
+                    }
+                />
+
                 {/* Admin Routes */}
                 <Route
                     path="/admin/profile"
                     element={
-                        <AdminRoute>
+                        <ProtectedRoute>
                             <Profile />
-                        </AdminRoute>
+                        </ProtectedRoute>
                     }
                 />
                 <Route

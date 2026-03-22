@@ -1,18 +1,18 @@
 /**
- * Admin profile page component.
+ * Profile page component for all authenticated users.
  */
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import { authAPI } from "../api/client"
-import { User } from "../types"
 import { AppHeader } from "./AppHeader"
 import "./Profile.css"
 
 export function Profile() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [firstName, setFirstName] = useState(user?.first_name || "")
   const [lastName, setLastName] = useState(user?.last_name || "")
+  const [email, setEmail] = useState(user?.email || "")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -24,7 +24,7 @@ export function Profile() {
     setIsLoading(true)
 
     try {
-      await authAPI.updateProfile(firstName, lastName)
+      await authAPI.updateProfile(firstName, lastName, email)
       setSuccess("Profile updated successfully!")
 
       // Update localStorage
@@ -32,8 +32,10 @@ export function Profile() {
         ...user!,
         first_name: firstName,
         last_name: lastName,
+        email: email,
       }
       localStorage.setItem("user", JSON.stringify(updatedUser))
+      refreshUser()
     } catch (err: any) {
       const message =
         err.response?.data?.detail ||
@@ -59,14 +61,9 @@ export function Profile() {
           </div>
 
           <div className="info-group">
-            <label>Email</label>
-            <p>{user?.email}</p>
-          </div>
-
-          <div className="info-group">
             <label>Role</label>
             <p>
-              <span className="badge badge-admin">{user?.role}</span>
+              <span className={`badge badge-${user?.role?.toLowerCase()}`}>{user?.role}</span>
             </p>
           </div>
 
@@ -109,6 +106,18 @@ export function Profile() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Enter last name"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email address"
               disabled={isLoading}
             />
           </div>

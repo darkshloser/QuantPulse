@@ -14,6 +14,7 @@ from shared.models import (
     ApprovalStatus,
     SelectedSymbol,
     SignalResult,
+    UserSymbolIndicator,
     UserCreateRequest,
     UserLoginRequest,
     TokenResponse,
@@ -193,6 +194,17 @@ async def update_profile(
         user.first_name = request.first_name
     if request.last_name is not None:
         user.last_name = request.last_name
+    if request.email is not None:
+        existing = db.query(User).filter(
+            User.email == request.email,
+            User.id != current_user.id,
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email address is already in use by another account",
+            )
+        user.email = request.email
 
     db.commit()
     db.refresh(user)
@@ -289,6 +301,7 @@ async def reject_user(
         )
 
     # Safety net: remove any user data (pending users shouldn't have data, but just in case)
+    db.query(UserSymbolIndicator).filter(UserSymbolIndicator.user_id == user_id).delete(synchronize_session="fetch")
     db.query(SelectedSymbol).filter(SelectedSymbol.user_id == user_id).delete(synchronize_session="fetch")
     db.query(SignalResult).filter(SignalResult.user_id == user_id).delete(synchronize_session="fetch")
 
@@ -327,6 +340,9 @@ async def deactivate_user(
         )
 
     # Cascading cleanup: remove all user-related data in one transaction
+    db.query(UserSymbolIndicator).filter(
+        UserSymbolIndicator.user_id == user_id
+    ).delete(synchronize_session="fetch")
     symbols_removed = (
         db.query(SelectedSymbol)
         .filter(SelectedSymbol.user_id == user_id)
@@ -399,6 +415,9 @@ async def delete_user(
         )
 
     # Cascading cleanup: remove all user-related data
+    db.query(UserSymbolIndicator).filter(
+        UserSymbolIndicator.user_id == user_id
+    ).delete(synchronize_session="fetch")
     symbols_removed = (
         db.query(SelectedSymbol)
         .filter(SelectedSymbol.user_id == user_id)

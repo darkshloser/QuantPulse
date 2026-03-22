@@ -1,7 +1,8 @@
 """Notifier Service - delivers alerts via Slack and GUI."""
 
 import logging
-from fastapi import FastAPI, Depends
+from typing import Optional
+from fastapi import FastAPI, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -90,14 +91,20 @@ async def send_gui_notification(
 
 @app.get("/notifications")
 async def get_recent_notifications(
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get recent notifications for the current user."""
-    signals = db.query(SignalResult).filter(
+    """Get recent notifications for the current user, optionally filtered by symbol."""
+    query = db.query(SignalResult).filter(
         SignalResult.user_id == current_user.id,
         SignalResult.notified == True,
-    ).order_by(SignalResult.notified_at.desc()).limit(20).all()
+    )
+
+    if symbol:
+        query = query.filter(SignalResult.symbol == symbol)
+
+    signals = query.order_by(SignalResult.notified_at.desc()).limit(10).all()
 
     return [
         {
